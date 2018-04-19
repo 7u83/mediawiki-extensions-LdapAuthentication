@@ -360,6 +360,9 @@ class LdapAuthenticationPlugin extends AuthPlugin {
 		case 'SearchAttribute':
 			global $wgLDAPSearchAttributes;
 			return self::setOrDefault( $wgLDAPSearchAttributes, $domain );
+		case 'SearchFilter':
+			global $wgLDAPSearchFilters;
+			return self::setOrDefault( $wgLDAPSearchFilters, $domain );
 		case 'BaseDN':
 			global $wgLDAPBaseDNs;
 			return self::setOrDefault( $wgLDAPBaseDNs, $domain );
@@ -1447,17 +1450,33 @@ class LdapAuthenticationPlugin extends AuthPlugin {
 			}
 		}
 
-		if ( ! $searchattr ) {
-			$searchattr = $this->getConf( 'SearchAttribute' );
+
+
+		$filter = $this->getConf( 'SearchFilter' );
+
+		if ($filter) {
+			$filter = str_replace( "USER-NAME", $username, $filter );
+			$this->printDebug( "Using regular filter: $filter", NONESENSITIVE );
 		}
-		// we need to do a subbase search for the entry
-		$filter = "(" . $searchattr . "=" . $this->getLdapEscapedString( $username ) . ")";
-		$this->printDebug( "Created a regular filter: $filter", SENSITIVE );
+		else {
+			if ( ! $searchattr ) {
+				$searchattr = $this->getConf( 'SearchAttribute' );
+			}
+
+
+			// we need to do a subbase search for the entry
+			$filter = "(" . $searchattr . "=" . $this->getLdapEscapedString( $username ) . ")";
+			$this->printDebug( "Created a regular filter: $filter", SENSITIVE );
+		}
+
 
 		// We explicitly put memberof here because it's an operational attribute in some servers.
 		$attributes = [ "*", "memberof" ];
 		$base = $this->getBaseDN( USERDN );
 		$this->printDebug( "Using base: $base", SENSITIVE );
+
+
+
 		$entry = self::ldap_search(
 			$this->ldapconn, $base, $filter, $attributes
 		);
